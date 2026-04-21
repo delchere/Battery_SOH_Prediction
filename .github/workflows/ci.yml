@@ -20,8 +20,15 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pandas numpy scikit-learn flask
-        pip install pytest
+        python -m pip install --upgrade pip
+        pip install pandas numpy scipy scikit-learn
+        pip install flask flask-cors python-dotenv joblib openpyxl
+        pip install pytest pytest-cov
+    
+    - name: Create directories
+      run: |
+        mkdir -p data/processed data/tests models_saved
     
     - name: Run tests
-      run: pytest tests/ -v
+      run: |
+        pytest tests/ -v
