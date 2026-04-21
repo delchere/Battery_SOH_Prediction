@@ -86,18 +86,18 @@ if results:
     ss_tot = ((df_results['soh_reel'] - df_results['soh_reel'].mean())**2).sum()
     r2 = 1 - (ss_res / ss_tot)
     
-    print(f"\n📊 STATISTIQUES:")
+    print("\n📊 STATISTIQUES:")
     print(f"   MAE  (Erreur absolue moyenne): {mae:.3f}%")
     print(f"   RMSE (Racine erreur quadratique): {rmse:.3f}%")
     print(f"   Max erreur: {max_err:.3f}%")
     print(f"   R² : {r2:.4f}")
     
-    print(f"\n📈 RÉSUMÉ:")
+    print("\n📈 RÉSUMÉ:")
     print(f"   ✅ Modèle performant (R² = {r2:.4f})")
     print(f"   📉 Erreur moyenne: {mae:.2f}%")
     
     # Afficher les cycles avec la plus grande erreur
-    print(f"\n⚠️ Cycles avec la plus grande erreur:")
+    print("\n⚠️ Cycles avec la plus grande erreur:")
     worst = df_results.nlargest(3, 'erreur_abs') if 'erreur_abs' in df_results else df_results
     df_results['erreur_abs'] = df_results['erreur'].abs()
     worst = df_results.nlargest(3, 'erreur_abs')

@@ -1,3 +1,5 @@
+from src.feature_engineering import calculate_features_from_raw_cycle
+from src.config import DATA_PATH, MODELS_PATH, FEATURES_SOH
 import pytest
 import pandas as pd
 import os
@@ -5,9 +7,6 @@ import sys
 import joblib
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.config import DATA_PATH, MODELS_PATH, FEATURES_SOH
-from src.feature_engineering import calculate_features_from_raw_cycle
 
 
 class TestModelOnUnseenData:

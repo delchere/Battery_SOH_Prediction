@@ -1,3 +1,4 @@
+from src.feature_engineering import calculate_features_from_raw_cycle
 import pytest
 import pandas as pd
 import numpy as np
@@ -5,8 +6,6 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.feature_engineering import calculate_features_from_raw_cycle
 
 
 class TestFeatureEngineering:

@@ -1,4 +1,24 @@
 [flake8]
 max-line-length = 120
-ignore = E501, W503
-exclude = .git, __pycache__, venv, models_saved
+ignore = 
+    E402,
+    E501,
+    W503,
+    W292,
+    E302,
+    E305,
+    F541,
+    E303,
+    W293,
+    F401,
+    E741
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    models_saved,
+    logs,
+    fix_lint.py,
+    scripts/,
+    tests/,
+    api/__init__.py

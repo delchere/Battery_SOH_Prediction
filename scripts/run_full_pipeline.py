@@ -16,6 +16,7 @@ from src.train import main as train_main
 from src.utils import logger
 
 
+
 def run_full_pipeline():
     logger.info("=" * 60)
     logger.info("🚀 PIPELINE COMPLET SOH PREDICTION")
