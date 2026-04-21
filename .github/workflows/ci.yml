@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline (LINT → SAST → BUILD → TEST → DEPLOY)
 
 on:
   push:
@@ -6,29 +6,175 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_IMAGE_NAME: battery-soh
+  RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+
 jobs:
-  test:
+  # ============================================================
+  # ÉTAPE 1 : LINT - Vérification de la qualité du code
+  # ============================================================
+  lint:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pandas numpy scipy scikit-learn
-        pip install flask flask-cors python-dotenv joblib openpyxl
-        pip install pytest pytest-cov
-    
-    - name: Create directories
-      run: |
-        mkdir -p data/processed data/tests models_saved
-    
-    - name: Run tests
-      run: |
-        pytest tests/ -v
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run linting
+        run: flake8 src/ api/ --max-line-length=120 --ignore=E501,W503
+
+  # ============================================================
+  # ÉTAPE 2 : SAST - Static Application Security Testing
+  # ============================================================
+  sast:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run security scan
+        run: bandit src/ -r -ll -f json -o bandit_report.json
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit_report.json
+
+  # ============================================================
+  # ÉTAPE 3 : BUILD - Construire l'image Docker
+  # ============================================================
+  build:
+    needs: sast
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} .
+
+      - name: Save Docker image
+        run: docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -o /tmp/image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+
+  # ============================================================
+  # ÉTAPE 4 : TEST - Lancer les tests unitaires
+  # ============================================================
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load -i /tmp/image.tar
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy scikit-learn
+          pip install flask flask-cors python-dotenv joblib openpyxl
+          pip install pytest pytest-cov
+
+      - name: Create directories
+        run: mkdir -p data/processed data/tests models_saved
+
+      - name: Run unit tests
+        run: pytest tests/ -v --cov=src --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # ============================================================
+  # ÉTAPE 5 : DEPLOY - Pousser sur Docker Hub et déployer sur Render
+  # ============================================================
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load -i /tmp/image.tar
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Tag Docker image
+        run: |
+          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Push to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Trigger Render deploy
+        run: |
+          curl -X POST \
+            https://api.render.com/deploy/srv-${{ env.RENDER_SERVICE_ID }} \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json"
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          curl -f https://battery-soh-api.onrender.com/health || exit 1
+
+      - name: Test prediction endpoint
+        run: |
+          curl -s -X POST https://battery-soh-api.onrender.com/predict \
+            -F "file=@data/tests/test_10_cycles.csv" \
+            | grep -q "soh_predicted" && echo "✅ Prediction endpoint OK" || exit 1
