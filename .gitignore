@@ -9,13 +9,14 @@ __pycache__/
 dist/
 build/
 
-models_saved/
+# models_saved/   ← COMMENTÉ (on veut garder le modèle)
+# *.pkl          ← COMMENTÉ (on veut garder le modèle)
+
 data/processed/
 data/tests/
 logs/
 .env
 *.log
-*.pkl
 .DS_Store
 .vscode/
 .idea/
