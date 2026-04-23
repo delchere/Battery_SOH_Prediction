@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: battery-soh-api
+    runtime: image
+    repo: https://github.com/delchere/Battery_SOH_Prediction
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python api/app.py
+    envVars:
+      - key: PORT
+        value: 5000
