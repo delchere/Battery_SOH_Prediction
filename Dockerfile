@@ -2,23 +2,27 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Installer scikit-learn via apt (version pré-compilée, fiable)
+# Installer les dépendances système (dont scikit-learn via apt)
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-sklearn \
     python3-pandas \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier et installer le reste des dépendances Python
+# Copier le fichier requirements
 COPY requirements.txt .
+
+# Installer les dépendances Python (sans scikit-learn et pandas déjà installés via apt)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir numpy==1.23.5
-RUN pip install --no-cache-dir flask flask-cors python-dotenv joblib openpyxl
+RUN pip install --no-cache-dir \
+    flask \
+    flask-cors \
+    python-dotenv \
+    joblib \
+    openpyxl \
+    numpy==1.23.5
 
-# Copier le code
+# Copier le reste du code
 COPY . .
-
-# Le modèle sera dans /usr/lib/python3/dist-packages/sklearn/
-# Pas besoin de l'entraîner à nouveau
 
 CMD ["python", "api/app.py"]
