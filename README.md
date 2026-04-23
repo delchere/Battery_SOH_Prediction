@@ -25,7 +25,7 @@ conda activate battery_app
 # 3. Installer les dépendances
 conda install -c conda-forge pandas numpy scipy scikit-learn xgboost lightgbm -y
 pip install flask flask-cors python-dotenv joblib openpyxl pytest pytest-cov
-#utilisation 
+ 
 # 4. Utilisation
 # Pipeline complet (recommendé)
 conda activate battery_app
