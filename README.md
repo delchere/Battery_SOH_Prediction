@@ -23,22 +23,44 @@ conda create -n battery_app python=3.10 -y
 conda activate battery_app
 
 # 3. Installer les dépendances
-conda install -c conda-forge pandas numpy scipy scikit-learn xgboost lightgbm -y
-pip install flask flask-cors python-dotenv joblib openpyxl pytest pytest-cov
- 
+pip install -r requirements.txt
+
+
 # 4. Utilisation
-# Pipeline complet (recommendé)
+
+# Pipeline complet
 conda activate battery_app
 python scripts/run_full_pipeline.py
 
 # Étapes individuelles
-conda activate battery_app
 python src/data_processor.py
 python src/extract_test_cycles.py
 python src/train.py
+python export_client_csv.py
 python api/app.py
 
-# Tester les prédictions (dans un autre terminal)
+
+# 5. Tester l'API
+
+# Dans un autre terminal
 conda activate battery_app
-python test_all_cycles.py
-curl -X POST http://localhost:5000/predict -F "file=@data/tests/test_10_cycles.csv"
+
+# Health check
+curl http://localhost:5000/health
+
+# Prédiction avec un fichier CSV brut
+curl -X POST http://localhost:5000/predict -F "file=@data/client_csv/cycle_98.csv"
+
+
+# 6. Tests
+pytest tests/ -v
+
+
+# 7. Linting et sécurité (optionnel)
+flake8 src/ api/ --max-line-length=120
+bandit src/ -r -ll
+
+
+# 8. Docker
+docker build -t battery-soh .
+docker run -p 5000:5000 battery-soh

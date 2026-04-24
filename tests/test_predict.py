@@ -18,7 +18,12 @@ class TestPredictor:
         if os.path.exists("models_saved/best_model.pkl"):
             temps = np.linspace(0, 3600, 100)
             tension = 4.2 - 0.0005 * temps
-            df = pd.DataFrame({'temps_s': temps, 'tension_V': tension})
+            courant = -1.0 * np.ones(100)  
+            df = pd.DataFrame({
+                'temps_s': temps,
+                'tension_V': tension,
+                'courant_A': courant   
+            })
 
             predictor = SOHPredictor()
             result = predictor.predict_from_dataframe(df)
