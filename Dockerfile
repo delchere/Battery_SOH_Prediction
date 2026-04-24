@@ -8,18 +8,9 @@ RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/
 # Copier requirements
 COPY requirements.txt .
 
-# Installer toutes les dépendances via pip (versions compatibles)
+# Installer via requirements.txt (une seule source de vérité)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-RUN pip install --no-cache-dir \
-    numpy==1.23.5 \
-    scikit-learn==1.7.2 \
-    pandas==2.0.3 \
-    flask==2.3.3 \
-    flask-cors==4.0.0 \
-    python-dotenv==1.0.0 \
-    joblib==1.3.2 \
-    openpyxl==3.1.2 \
-    scipy==1.10.1
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copier le code
 COPY . .
