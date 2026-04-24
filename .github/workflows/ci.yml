@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_IMAGE_NAME: battery-soh
-
 jobs:
   # ============================================================
   # ÉTAPE 1 : SAST - Static Application Security Testing
@@ -45,10 +41,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        run: docker build -t ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} .
+        run: docker build -t battery-soh:${{ github.sha }} .
 
       - name: Save Docker image
-        run: docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} -o /tmp/image.tar
+        run: docker save battery-soh:${{ github.sha }} -o /tmp/image.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
@@ -66,15 +62,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp
-
-      - name: Load Docker image
-        run: docker load -i /tmp/image.tar
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -82,48 +69,29 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas numpy scikit-learn
-          pip install flask flask-cors python-dotenv joblib openpyxl
-          pip install pytest pytest-cov
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Create directories
-        run: mkdir -p data/processed data/tests models_saved
+      - name: Train model
+        run: |
+          python src/data_processor.py
+          python src/extract_test_cycles.py
+          python src/train.py
 
       - name: Run unit tests
         run: pytest tests/ -v --cov=src
 
   # ============================================================
-  # ÉTAPE 4 : DEPLOY - Pousser sur Docker Hub
+  # ÉTAPE 4 : DEPLOY - Déclencher le déploiement sur Render
   # ============================================================
   deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Download Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp
-
-      - name: Load Docker image
-        run: docker load -i /tmp/image.tar
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Tag Docker image
+      - name: Trigger Render deploy
         run: |
-          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
-          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
-
-      - name: Push to Docker Hub
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
-
-      - name: Health check
-        run: echo "✅ Deployment completed"
+          curl -X POST \
+            https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }} \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json"
