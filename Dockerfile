@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir \
     numpy==1.23.5 \
-    scikit-learn==1.2.2 \
+    scikit-learn==1.7.2 \
     pandas==2.0.3 \
     flask==2.3.3 \
     flask-cors==4.0.0 \
