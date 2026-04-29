@@ -67,16 +67,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install dependencies (exact versions)
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install numpy==1.23.5
+          pip install scikit-learn==1.2.2 --force-reinstall --no-deps
+          pip install pandas==2.0.3 scipy==1.10.1 flask==2.3.3 flask-cors==4.0.0 python-dotenv==1.0.0 joblib==1.3.2 openpyxl==3.1.2 pytest==8.4.2 pytest-cov==4.1.0
 
-      - name: Train model
-        run: |
-          python src/data_processor.py
-          python src/extract_test_cycles.py
-          python src/train.py
+      - name: Create directories
+        run: mkdir -p data/processed data/tests models_saved
 
       - name: Run unit tests
         run: pytest tests/ -v --cov=src
@@ -89,6 +88,15 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load -i /tmp/image.tar
+
       - name: Trigger Render deploy
         run: |
           curl -X POST \
