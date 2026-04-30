@@ -55,7 +55,7 @@ curl -X POST http://localhost:5000/predict -F "file=@data/client_csv/cycle_98.cs
 # 6. Tests
 pytest tests/ -v
 
-
+#
 # 7. Linting et sécurité (optionnel)
 flake8 src/ api/ --max-line-length=120
 bandit src/ -r -ll
